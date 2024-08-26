@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <title>IMF Plot</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        form p {
+            text-align: center;
+            font-size: 14px;
+            color: #555;
+        }
+        .load-button {
+            display: inline-block;
+            width: auto;
+            text-align: center;
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .load-button:hover {
+            background-color: #0056b3;
+        }
+        .form-group {
+            margin-top: 15px;
+        }
+        .plotly-graph-div {
+            border: none; /* Remove border */
+            border-radius: 0; /* Remove border-radius */
+            padding: 0; /* Remove padding if needed */
+            margin-top: 1px;
+            display: flex;
+            justify-content: center;
+        }
+        .plotly-graph-div > div {
+            width: 100%;
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>IMF Plot</h2>
+
+        <form method="post" enctype="multipart/form-data">
+            <p>Please keep in mind that you must provide the mass in logarithmic scale, otherwise it will overflow!</p>
+            {% csrf_token %}
+
+            <div class="form-group row align-items-center">
+                <div class="col">
+                    {{ form.uploaded_file.label_tag }}
+                    {{ form.uploaded_file }}
+                </div>
+                <div class="col-auto">
+                    <button type="submit" name="load_columns" class="load-button">Load Columns</button>
+                </div>
+                <div>
+                    {{ form.log_scale }}
+                    {{ form.log_scale.label_tag }}
+                </div>   
+            </div>
+
+            <div class="form-group mt-3">
+                {{ form.mass_column.label_tag }}
+                {{ form.mass_column }}
+            </div>
+            <div class="form-group">
+                {{ form.log_x_axis.label_tag }}{{ form.log_x_axis }}
+            </div>
+            <div class="form-group">
+                {{ form.log_y_axis.label_tag }}{{ form.log_y_axis }}
+            </div>
+
+            <div class="text-center mt-3">
+                <button type="submit" class="btn btn-primary">Generate Plot</button>
+            </div>
+        </form>
+
+        {% if plot_div %}
+            <div class="plotly-graph-div">
+                <div>{{ plot_div|safe }}</div>
+            </div>
+            <div class="text-center mt-3">
+                <a href="{% url 'imf_plotter:data_download' %}" class="btn btn-success">Download Data as CSV</a>
+            </div>
+        {% endif %}
+
+        <div class="text-center mt-3">
+            <a href="{% url 'home' %}" class="btn btn-secondary">Go back to home</a>
+        </div>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+        });
+    </script>
+</body>
+</html>

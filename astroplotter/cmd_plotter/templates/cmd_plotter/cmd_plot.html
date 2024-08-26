@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <title>Interactive Plot</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f8f9fa;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        a {
+            margin: 10px;
+        }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .load-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .load-button:hover {
+            background-color: #0056b3;
+        }
+
+        .plotly-graph-div {
+            margin-bottom: 1px;
+        }
+
+        #table-container {
+            margin-top: 1px;
+        }
+
+        .table-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="plot-section">
+            <h2>Interactive Plot</h2>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="form-row">
+                    <div>
+                        {{ form.uploaded_file.label_tag }}
+                        {{ form.uploaded_file }}
+                    </div>
+                    <div>
+                        <button type="submit" name="load_columns" class="load-button">Load Columns</button>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.x_column.label_tag }}{{ form.x_column }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.y_column.label_tag }}{{ form.y_column }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.use_color_column.label_tag }}{{ form.use_color_column }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.color_column.label_tag }}{{ form.color_column }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.colorscale_choice.label_tag }}{{ form.colorscale_choice }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            {{ form.invert_x_axis.label_tag }}{{ form.invert_x_axis }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.invert_y_axis.label_tag }}{{ form.invert_y_axis }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.log_x_axis.label_tag }}{{ form.log_x_axis }}
+                        </div>
+                        <div class="form-group">
+                            {{ form.log_y_axis.label_tag }}{{ form.log_y_axis }}
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" name="generate_plot" class="load-button">Generate Plot</button>
+            </form>
+            
+            <div id="table-container" class="table-container"></div>
+            <div id="plot" class="plotly-graph-div">
+                {% if plot_div %}
+                    {{ plot_div|safe }}
+                {% endif %}
+            </div>
+
+            <input type="hidden" id="selected-data" value="">
+
+            <button id="send-data" class="btn btn-success">Send Selected Data</button>
+            <div class="text-center mt-3">
+                <a href="{% url 'home' %}" class="btn btn-secondary">Go back to home</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var plotElement = document.getElementById('plot').getElementsByClassName('plotly-graph-div')[0];
+            var selectedDataField = document.getElementById('selected-data');
+            var tableContainer = document.getElementById('table-container');
+
+            // Ensure that 'data' is available in the template context
+            var dt = {{ data|safe }};
+
+            function updateTable(selectedIndices) {
+                var header = dt.columns;
+                var cells = header.map(column => selectedIndices.map(index => dt.data[index][dt.columns.indexOf(column)]));
+
+                Plotly.react(tableContainer, [{
+                    type: 'table',
+                    header: {
+                        values: header,
+                        fill: { color: '#C2D4FF' },
+                        align: 'left'
+                    },
+                    cells: {
+                        values: cells,
+                        fill: { color: '#F5F8FF' },
+                        align: 'left'
+                    }
+                }], {
+                    width: plotElement.clientWidth  // Set the width of the table to match the plot's width
+                });
+            }
+
+            function adjustTableWidth() {
+                var selectedIndices = selectedDataField.value ? JSON.parse(selectedDataField.value) : dt.data.map((_, index) => index);
+                updateTable(selectedIndices);
+            }
+
+            window.addEventListener('resize', adjustTableWidth);
+
+            plotElement.on('plotly_selected', function(eventData) {
+                if (eventData && eventData.points.length > 0) {
+                    var selectedIndices = eventData.points.map(point => point.pointIndex);
+                    updateTable(selectedIndices);
+                    if (selectedDataField) {
+                        selectedDataField.value = JSON.stringify(selectedIndices);
+                    }
+                } else {
+                    updateTable(dt.data.map((_, index) => index));
+                    if (selectedDataField) {
+                        selectedDataField.value = '';
+                    }
+                }
+            });
+
+            document.getElementById('send-data').addEventListener('click', function() {
+                var selectedIndices = selectedDataField ? JSON.parse(selectedDataField.value) : [];
+
+                if (selectedIndices.length > 0) {
+                    var selectedData = selectedIndices.map(index => {
+                        return dt.columns.reduce((acc, column) => {
+                            acc[column] = dt.data[index][dt.columns.indexOf(column)];
+                            return acc;
+                        }, {});
+                    });
+
+                    fetch('/process_selected_data/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(selectedData)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                    })
+                    .catch(error => {
+                        alert('Error sending data');
+                    });
+                } else {
+                    alert('No data selected.');
+                }
+            });
+
+            // Generate the initial table with all data when the page loads
+            updateTable(dt.data.map((_, index) => index));
+            adjustTableWidth();  // Initial adjustment on load
+        });
+    </script>
+</body>
+</html>
